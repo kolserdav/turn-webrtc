@@ -28,7 +28,7 @@ const wsServer = new WebSocketServer({
 });
 
 wsServer.on('request', function (request) {
-  console.log('request', request.key);
+  console.log('request', request);
 
   const connection = request.accept('json', request.origin);
 
