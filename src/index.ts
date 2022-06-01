@@ -1,15 +1,18 @@
 import http from 'http';
 import dotenv from 'dotenv';
 import nodeStatic from 'node-static';
-import { server as WebSocketServer } from 'websocket';
+import { server as WebSocketServer, connection as Connection } from 'websocket';
 dotenv.config();
 import { log, sendMessage } from './utils';
-import { PeerMessageType, PeerMessageValue } from './client';
+import { PeerMessageType, PeerMessageValue, Resource } from './client';
 
 const {
   env: { WS_PORT },
 }: // eslint-disable-next-line @typescript-eslint/no-explicit-any
 { env: Record<string, string> } = process as any;
+
+const connections: Record<string, { id: number; connection: Connection }> = {};
+const users: Record<number, string> = {};
 
 const fileServer = new nodeStatic.Server('cloud');
 
@@ -27,20 +30,35 @@ const wsServer = new WebSocketServer({
 });
 
 wsServer.on('request', function (request) {
-  console.log('request', request.key);
+  const { key } = request;
   const connection = request.accept('json', request.origin);
-  sendMessage<PeerMessageType.getId>({ connection, data: { type: PeerMessageType.getId } });
+  connections[key] = {
+    id: 0,
+    connection,
+  };
+  sendMessage<PeerMessageType.getId>({
+    connection,
+    data: { type: PeerMessageType.getId, resource: Resource.message },
+  });
   connection.on('message', function (message) {
     if (message.type === 'utf8') {
       const msg = JSON.parse(message.utf8Data);
       const { targetUserId, type }: PeerMessageValue<PeerMessageType.all> = msg;
       switch (type) {
         case PeerMessageType.setId:
-          console.log(1, msg);
+          connections[key].id = msg.id;
+          users[msg.id] = request.key;
+          sendMessage<PeerMessageType.idSaved>({
+            connection,
+            data: {
+              type: PeerMessageType.idSaved,
+              resource: Resource.message,
+            },
+          });
           break;
         default:
           console.log(2, targetUserId);
-        // connection.sendUTF(JSON.stringify(msg));
+          sendMessage({ connection: connections[users[targetUserId]].connection, data: msg });
       }
     }
   });
