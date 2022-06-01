@@ -1,11 +1,11 @@
 {
   "name": "turn-webrtc",
   "version": "1.0.0",
-  "main": "dist/index.mjs",
+  "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
     "watch": "tsc -p . -w",
-    "start": "nodemon dist/index.mjs",
+    "start": "nodemon dist/index.js",
     "dev": "concurrently \"npm run watch\" \"npm run start\""
   },
   "devDependencies": {
