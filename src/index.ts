@@ -1,6 +1,12 @@
+/* eslint-disable no-case-declarations */
 import http from 'http';
 import dotenv from 'dotenv';
 import nodeStatic from 'node-static';
+import webrtc from 'webrtc';
+import ffmpeg from 'fluent-ffmpeg';
+import path from 'path';
+import fs from 'fs';
+import stringToStream from 'string-to-stream';
 import { server as WebSocketServer, connection as Connection } from 'websocket';
 dotenv.config();
 import { log, sendMessage } from './utils';
@@ -40,7 +46,7 @@ wsServer.on('request', function (request) {
     connection,
     data: { type: PeerMessageType.getId, resource: Resource.message },
   });
-  connection.on('message', function (message) {
+  connection.on('message', async function (message) {
     if (message.type === 'utf8') {
       const msg = JSON.parse(message.utf8Data);
       const { targetUserId, type }: PeerMessageValue<PeerMessageType.all> = msg;
@@ -56,8 +62,24 @@ wsServer.on('request', function (request) {
             },
           });
           break;
+        case PeerMessageType.offer:
+          const peer = new webrtc.RTCPeerConnection({
+            iceServers: [
+              {
+                urls: ['stun:stun.l.google.com:19302'],
+              },
+            ],
+          });
+          peer.ontrack = handleTrackEvent;
+          const desc = new webrtc.RTCSessionDescription(msg.sdp.sdp);
+          await peer.setRemoteDescription(desc);
+          const answer = await peer.createAnswer();
+          await peer.setLocalDescription(answer);
+          const payload = {
+            sdp: peer.localDescription,
+          };
+
         default:
-          console.log(2, targetUserId);
           sendMessage({ connection: connections[users[targetUserId]].connection, data: msg });
       }
     }
@@ -67,3 +89,13 @@ wsServer.on('request', function (request) {
     console.log('close', reason, description);
   });
 });
+
+function handleTrackEvent(e: any) {
+  console.log(1);
+  console.log(e.streams);
+  const recorder = new MediaRecorder(e.streams);
+  recorder.ondataavailable = (blob) => {
+    console.log(32);
+  };
+  recorder.start(5 * 1000);
+}
