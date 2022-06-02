@@ -2,7 +2,6 @@
 import http from 'http';
 import dotenv from 'dotenv';
 import nodeStatic from 'node-static';
-import webrtc from 'webrtc';
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
@@ -63,21 +62,6 @@ wsServer.on('request', function (request) {
           });
           break;
         case PeerMessageType.offer:
-          const peer = new webrtc.RTCPeerConnection({
-            iceServers: [
-              {
-                urls: ['stun:stun.l.google.com:19302'],
-              },
-            ],
-          });
-          peer.ontrack = handleTrackEvent;
-          const desc = new webrtc.RTCSessionDescription(msg.sdp.sdp);
-          await peer.setRemoteDescription(desc);
-          const answer = await peer.createAnswer();
-          await peer.setLocalDescription(answer);
-          const payload = {
-            sdp: peer.localDescription,
-          };
 
         default:
           sendMessage({ connection: connections[users[targetUserId]].connection, data: msg });
@@ -89,13 +73,3 @@ wsServer.on('request', function (request) {
     console.log('close', reason, description);
   });
 });
-
-function handleTrackEvent(e: any) {
-  console.log(1);
-  console.log(e.streams);
-  const recorder = new MediaRecorder(e.streams);
-  recorder.ondataavailable = (blob) => {
-    console.log(32);
-  };
-  recorder.start(5 * 1000);
-}
